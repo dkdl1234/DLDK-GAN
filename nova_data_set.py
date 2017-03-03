@@ -77,29 +77,27 @@ class nova_set(object):
 				ref_real, ref_imag = self.reflactance['real'][begin:end, :], self.reflactance['imag'][begin:end, :]
 			except:
 				ref_real, ref_imag = self.reflactance['real'][begin:, :], self.reflactance['imag'][begin:, :]
+
+			return ref_real, ref_imag
 		
 		elif which == 'tra':
 			try:
 				tra_real, tra_imag = self.transmitance['real'][begin:end, :], self.transmitance['imag'][begin:end, :]
 			except:
 				tra_real, tra_imag = self.transmitance['real'][begin:, :], self.transmitance['imag'][begin:, :]
+		
+			return tra_real, tra_imag
+
 		elif which == 'data':
 			try:
 				all_real = self.data[begin:end, :]
 			except:
 				all_real = self.data[begin:, :]
+			
+			return all_real, None
 
-		elif which == 'all':
-			try:
-				ref_real, ref_imag = self.reflactance['real'][begin:end, :], self.reflactance['imag'][begin:end, :]
-				tra_real, tra_imag = self.transmitance['real'][begin:end, :], self.transmitance['imag'][begin:end, :]
-				all_real = self.data[begin:end, :]
-			except:
-				ref_real, ref_imag = self.reflactance['real'][begin:, :], self.reflactance['imag'][begin:, :]
-				tra_real, tra_imag = self.transmitance['real'][begin:, :], self.transmitance['imag'][begin:, :]
-				all_real = self.data[begin:, :]
-
-		return ref_real, ref_imag, tra_real, tra_imag, all_real
+		else:
+			return None, None
 
 
 	def permutate(self):

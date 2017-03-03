@@ -21,8 +21,8 @@ flags = tf.flags
 logging = tf.logging
 
 flags.DEFINE_integer("batch_size", 100, "batch size")
-flags.DEFINE_integer("updates_per_epoch", 1000, "number of updates per epoch")
-flags.DEFINE_integer("max_epoch", 150, "max epoch")
+flags.DEFINE_integer("updates_per_epoch", 100, "number of updates per epoch")
+flags.DEFINE_integer("max_epoch", 100, "max epoch")
 flags.DEFINE_float("learning_rate", 1e-2, "learning rate")
 flags.DEFINE_string("working_directory", "", "")   
 flags.DEFINE_integer("hidden_size", 128, "size of the hidden VAE unit")
@@ -49,7 +49,7 @@ if __name__ == "__main__":
 	#TODO : remove VAE option, set model to GAN
 	#Done
 	print('Creating GAN model...')
-	model = GAN(FLAGS.learning_rate, log_dir='./logs/', model_dir='./model/')
+	model = GAN(FLAGS.learning_rate, FLAGS.batch_size ,log_dir='./logs/', model_dir='./model/')
     	num_batches = novaSet.num_batches()
 
 	print('Start Training...')
@@ -59,8 +59,7 @@ if __name__ == "__main__":
 		novaSet.permutate()
 		for i in pbar(range(num_batches)):
 			#fetch the batch of data to the model
-			ref_real, _, _, _, _ = novaSet.next_batch('ref')
-
+			ref_real, _  = novaSet.next_batch('ref')
 	    		noise = np.random.normal(0.0, 0.02, size=[ref_real.shape[0], 8]).astype(np.float32)
 
 			#feed the btach of data to the model
@@ -70,10 +69,12 @@ if __name__ == "__main__":
 			training_loss = training_loss / \
 				(FLAGS.updates_per_epoch * FLAGS.batch_size)
 
-		print("Loss %f" % (training_loss))
-		novaSet.batch_counter = 0
-		_,_,_,_,data = novaSet.next_batch('data')
-		model.generate_and_save_images(data, FLAGS.working_directory)
+		if (epoch % 10) == 0 :
+			print("Loss %f" % (training_loss))
+			model.save_model(epoch)
 
-	#save the generator
-	model.save_model()
+		#novaSet.batch_counter = 0
+		#data, _ = novaSet.next_batch('data')
+		#model.generate_and_save_images(data, FLAGS.working_directory)
+
+	model.close_session()

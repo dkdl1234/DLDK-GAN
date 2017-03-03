@@ -12,61 +12,63 @@ import tensorflow as tf
 import os
 
 from utils import discriminator, decoder
-from generator import Generator
 
 def concat_elu(inputs):
     return tf.nn.elu(tf.concat(3, [-inputs, inputs]))
 
-class GAN(Generator):
+class GAN(object):
 
-    def __init__(self, learning_rate, log_dir, model_dir):
+    def __init__(self, learning_rate, batch_size, log_dir, model_dir):
 	#TODO: change 'self.input_tensor' dimensionality from 28*28 to 30*30
 	#DONE
-	tf.set_random_seed(seed=1)
-	self.graph = tf.Graph()
-	with self.graph.as_default():
-		with tf.name_scope('Input'):
-        		self.input_tensor = tf.placeholder(tf.float32, [None, 30 * 30], name='NOVAImage') 
-			self.nova_input   = tf.placeholder(tf.float32, [None, 8], name = 'Slice-Params')
+        tf.set_random_seed(seed=1)
+        self.graph = tf.Graph()
+        with self.graph.as_default():
+            with tf.name_scope('Input'):
+                self.input_tensor = tf.placeholder(tf.float32, [batch_size, 30 * 30], name='NOVAImage')
+                self.nova_input   = tf.placeholder(tf.float32, [batch_size, 8], name = 'Slice-Params')
 
-        	with arg_scope([layers.conv2d, layers.conv2d_transpose],
-				activation_fn=concat_elu,
-                       		normalizer_fn=layers.batch_norm,
-                       		normalizer_params={'scale': True}):
-            		with tf.variable_scope("Model"):
-                		D1 = discriminator(self.input_tensor)  # positive examples
-                		D_params_num = len(tf.trainable_variables())
-                		G = decoder(self.nova_input)
-                		self.sampled_tensor = G
+            with arg_scope([layers.conv2d, layers.conv2d_transpose],
+			    activation_fn=concat_elu,
+                       	    normalizer_fn=layers.batch_norm,
+                       	    normalizer_params={'scale': True}):
+                with tf.variable_scope("Model"):
+                    D1 = discriminator(self.input_tensor)  # positive examples
+                    D_params_num = len(tf.trainable_variables())
+                    G = decoder(self.nova_input)
+                    self.sampled_tensor = G
 
-           		with tf.variable_scope("Model", reuse=True):
-                		D2 = discriminator(G)  # generated examples
+                with tf.variable_scope("Model", reuse=True):
+                    D2 = discriminator(G)  # generated examples
 
-        	D_loss = self.__get_discrinator_loss(D1, D2)
-        	G_loss = self.__get_generator_loss(D2)
+            D_loss = self.__get_discrinator_loss(D1, D2)
+            G_loss = self.__get_generator_loss(D2)
 
-        	params = tf.trainable_variables()
-        	D_params = params[:D_params_num]
-        	G_params = params[D_params_num:]
-        	#    train_discrimator = optimizer.minimize(loss=D_loss, var_list=D_params)
-        	# train_generator = optimizer.minimize(loss=G_loss, var_list=G_params)
-        	global_step = tf.contrib.framework.get_or_create_global_step()
-        	self.train_discriminator = layers.optimize_loss(D_loss, global_step, learning_rate / 10, 'Adam', variables=D_params, update_ops=[])
-        	self.train_generator 	 = layers.optimize_loss(G_loss, global_step, learning_rate, 'Adam', variables=G_params, update_ops=[])
-	
-		#create a tensorflow session and initialize all the variables
-        	self.sess = tf.Session(graph=self.graph)
-        	self.sess.run(tf.global_variables_initializer())
+            self.params = tf.trainable_variables()
+            self.D_params = self.params[:D_params_num]
+            self.G_params = self.params[D_params_num:]
+            #    train_discrimator = optimizer.minimize(loss=D_loss, var_list=D_params)
+            # train_generator = optimizer.minimize(loss=G_loss, var_list=G_params)
+            global_step = tf.contrib.framework.get_or_create_global_step()
+            self.train_discriminator = layers.optimize_loss(D_loss, global_step, learning_rate / 10, 'Adam', variables=self.D_params, update_ops=[])
+            self.train_generator     = layers.optimize_loss(G_loss, global_step, learning_rate, 'Adam', variables=self.G_params, update_ops=[])
 
-		self.log_dir, self.model_dir = log_dir, model_dir
-		if not os.path.exists(log_dir):
-			os.makedirs(log_dir)
+            #create the saver
+            self.saver = tf.train.Saver({v.op.name : v for v in self.params})
+            
+	    #create a tensorflow session and initialize all the variables
+            self.sess = tf.Session(graph=self.graph)
+            self.sess.run(tf.global_variables_initializer())
 
-		if not os.path.exists(model_dir):
-			os.makedirs(model_dir)
+            self.log_dir, self.model_dir = log_dir, model_dir
+            if not os.path.exists(log_dir):
+                os.makedirs(log_dir)
+
+            if not os.path.exists(model_dir):
+                os.makedirs(model_dir)
 
 			
-		self.writer = tf.summary.FileWriter(log_dir, tf.get_default_graph())
+            self.writer = tf.summary.FileWriter(log_dir, tf.get_default_graph())
 	
 
     def __get_discrinator_loss(self, D1, D2):
@@ -93,42 +95,48 @@ class GAN(Generator):
 
     def update_params(self, disc_inputs, gen_inputs):
         d_loss_value = self.sess.run(self.train_discriminator, feed_dict={self.input_tensor: disc_inputs, self.nova_input : gen_inputs})
-	
         g_loss_value = self.sess.run(self.train_generator  , feed_dict={self.nova_input : gen_inputs})
 
         return g_loss_value
 
 	
     def operate(self, nova_inputs):
-	'''
-	NOTICE: this method set to be used only after training the generator!
-	
-	Args:
-		nova_inputs : a numpy or tensorflow of the shape [?, 8], e.g. an unknown (user-defned) number of data set,
-		each sample of the set has 8 features
-	Returns:
-		a condensed (flattened) image of the real/imaginary reflactance/transmitance matrix, of size [1, 900]
-	'''
-	if self.sess is None:
-		self.sess = tf.Session(graph=self.graph)
-		self.sess.run(tf.global_variable_initializer())
+        '''
+        NOTICE: this method set to be used only after training the generator!
+        '''
+        if self.sess is None:
+            self.sess = tf.Session(graph=self.graph)
+            self.sess.run(tf.global_variable_initializer())
 
-	return sess.run(self.samples_tensor, feed_dict={self.nova_input : nova_inputs})
+        return sess.run(self.samples_tensor, feed_dict={self.nova_input : nova_inputs})
+
 
     def close(self):
-	'''
-		Close the session that holds the graph
-	'''
-	self.sess.close()
-	self.sess = None
+        '''
+	    Close the session that holds the graph
+        '''
+        self.sess.close()
+        self.sess = None
 
-    def save_model(self):
-	
-	
-	model_file_path = os.path.join(self.model_dir, "model.cktp")
-	if os.path.exists(model_file_path):
-		os.remove(model_file_path)
 
-	self.saver = tf.train.Saver()
-	self.saver.save(self.sess, os.path.join(self.model_dir, "model.cktp"))
-	self.saver = None
+
+    def save_model(self, step):
+        model_file_path = os.path.join(self.model_dir, "model.ckpt")
+        if os.path.exists(model_file_path):
+            os.remove(model_file_path)
+
+        self.saver.save(self.sess, os.path.join(self.model_dir, "model.ckpt"), global_step=step)
+        self.saver = None
+
+
+
+    def close_session(self):
+        if self.sess is not None:
+            self.sess.close()
+
+        self.sess = None
+
+
+
+    def trainable_params(self):
+        return self.params
