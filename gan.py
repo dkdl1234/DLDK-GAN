@@ -25,8 +25,8 @@ class GAN(object):
         self.graph = tf.Graph()
         with self.graph.as_default():
             with tf.name_scope('Input'):
-                self.input_tensor = tf.placeholder(tf.float32, [batch_size, 30 * 30], name='NOVAImage')
-                self.nova_input   = tf.placeholder(tf.float32, [batch_size, 8], name = 'Slice-Params')
+                self.input_tensor = tf.placeholder(tf.float32, [None, 30 * 30], name='NOVAImage')
+                self.nova_input   = tf.placeholder(tf.float32, [None, 8], name = 'Slice-Params')
 
             with arg_scope([layers.conv2d, layers.conv2d_transpose],
 			    activation_fn=concat_elu,
@@ -41,8 +41,13 @@ class GAN(object):
                 with tf.variable_scope("Model", reuse=True):
                     D2 = discriminator(G)  # generated examples
 
-            D_loss = self.__get_discrinator_loss(D1, D2)
-            G_loss = self.__get_generator_loss(D2)
+            self.D_loss = self.__get_discrinator_loss(D1, D2)
+            self.G_loss = self.__get_generator_loss(D2)
+
+	    #Define discriminator and generator loss
+	    self.d_loss_sum = tf.summary.scalar("Disc_Loss", self.D_loss)
+	    self.g_loss_sum = tf.summary.scalar("Gen_Loss", self.G_loss)
+	    self.merged_op = tf.summary.merge([self.d_loss_sum, self.g_loss_sum])	    
 
             self.params = tf.trainable_variables()
             self.D_params = self.params[:D_params_num]
@@ -50,8 +55,8 @@ class GAN(object):
             #    train_discrimator = optimizer.minimize(loss=D_loss, var_list=D_params)
             # train_generator = optimizer.minimize(loss=G_loss, var_list=G_params)
             global_step = tf.contrib.framework.get_or_create_global_step()
-            self.train_discriminator = layers.optimize_loss(D_loss, global_step, learning_rate / 10, 'Adam', variables=self.D_params, update_ops=[])
-            self.train_generator     = layers.optimize_loss(G_loss, global_step, learning_rate, 'Adam', variables=self.G_params, update_ops=[])
+            self.train_discriminator = layers.optimize_loss(self.D_loss, global_step, learning_rate / 10, 'Adam', variables=self.D_params, update_ops=[])
+            self.train_generator     = layers.optimize_loss(self.G_loss, global_step, learning_rate, 'Adam', variables=self.G_params, update_ops=[])
 
             #create the saver
             self.saver = tf.train.Saver({v.op.name : v for v in self.params})
@@ -69,7 +74,6 @@ class GAN(object):
 
 			
             self.writer = tf.summary.FileWriter(log_dir, tf.get_default_graph())
-	
 
     def __get_discrinator_loss(self, D1, D2):
         '''Loss for the discriminator network
@@ -94,9 +98,12 @@ class GAN(object):
         return losses.sigmoid_cross_entropy(D2, tf.ones(tf.shape(D2)))
 
     def update_params(self, disc_inputs, gen_inputs):
-        d_loss_value = self.sess.run(self.train_discriminator, feed_dict={self.input_tensor: disc_inputs, self.nova_input : gen_inputs})
-        g_loss_value = self.sess.run(self.train_generator  , feed_dict={self.nova_input : gen_inputs})
+        d_loss_value, g_loss_value, self.summary = self.sess.run([self.train_discriminator, self.train_generator, self.merged_op], \
+									feed_dict={self.input_tensor: disc_inputs, self.nova_input : gen_inputs})
 
+        #g_loss_value = self.sess.run(self.train_generator  , feed_dict={self.nova_input : gen_inputs})
+	
+	#self.summary = self.sess.run([self.merged_op], feed_dict={self.input_tensor: disc_inputs, self.nova_input : gen_inputs})
         return g_loss_value
 
 	
@@ -126,7 +133,6 @@ class GAN(object):
             os.remove(model_file_path)
 
         self.saver.save(self.sess, os.path.join(self.model_dir, "model.ckpt"), global_step=step)
-        self.saver = None
 
 
 
@@ -140,3 +146,9 @@ class GAN(object):
 
     def trainable_params(self):
         return self.params
+
+
+
+    def write_summaries(self, sum_epoch):
+	self.writer.add_summary(self.summary, sum_epoch)
+	

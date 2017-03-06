@@ -27,7 +27,7 @@ flags.DEFINE_float("learning_rate", 1e-2, "learning rate")
 flags.DEFINE_string("working_directory", "", "")   
 flags.DEFINE_integer("hidden_size", 128, "size of the hidden VAE unit")
 flags.DEFINE_string("model", "gan", "Model type")
-flags.DEFINE_string("load_opt", "ref", "Transmitance or Reflactance")
+flags.DEFINE_string("load_opt", "all", "Transmitance or Reflactance")
 
 FLAGS = flags.FLAGS
 
@@ -44,37 +44,53 @@ if __name__ == "__main__":
 	opt = FLAGS.load_opt
 	print('Loading {} data...'.format(opt))
     	novaSet.load(opt)
-	novaSet.load('data')
 
-	#TODO : remove VAE option, set model to GAN
-	#Done
-	print('Creating GAN model...')
-	model = GAN(FLAGS.learning_rate, FLAGS.batch_size ,log_dir='./logs/', model_dir='./model/')
-    	num_batches = novaSet.num_batches()
+	if opt != 'all':
+		novaSet.load('data')
+	
+	#set the running configuration
+	rconfig = None
+	if opt == 'all':
+		rconfig = ['ref', 'tra']
+	else:
+		rconfig = [opt]
 
-	print('Start Training...')
-	for epoch in range(FLAGS.max_epoch):
-		training_loss = 0.0
-		pbar = ProgressBar()
-		novaSet.permutate()
-		for i in pbar(range(num_batches)):
-			#fetch the batch of data to the model
-			ref_real, _  = novaSet.next_batch('ref')
-	    		noise = np.random.normal(0.0, 0.02, size=[ref_real.shape[0], 8]).astype(np.float32)
+	for config in rconfig:
+		for config_type in ['real', 'imag']:
+			print('Creating GAN model for {} {}...'.format(config, config_type))
+			model = GAN(	FLAGS.learning_rate, \
+					FLAGS.batch_size ,\
+					log_dir	  ='./logs/' + os.path.join(config,config_type),\
+					 model_dir='./model/'+ os.path.join(config,config_type))
 
-			#feed the btach of data to the model
-			loss_value = model.update_params(ref_real, noise)
-			training_loss += loss_value
+    			num_batches = novaSet.num_batches()
 
-			training_loss = training_loss / \
-				(FLAGS.updates_per_epoch * FLAGS.batch_size)
+			print('Start training {} {} part...'.format(config, config_type))
+			for epoch in range(FLAGS.max_epoch):
+				training_loss = 0.0
+				pbar = ProgressBar()
+				novaSet.permutate()
+				for i in pbar(range(num_batches)):
+					#fetch the batch of data to the model
+					ref_data  = novaSet.next_batch(config, config_type)
+			    		noise = np.random.normal(0.0, 0.02, size=[ref_data.shape[0], 8]).astype(np.float32)
 
-		if (epoch % 10) == 0 :
-			print("Loss %f" % (training_loss))
-			model.save_model(epoch)
+					#feed the btach of data to the model
+					loss_value = model.update_params(ref_data, noise)
+					training_loss += loss_value
 
-		#novaSet.batch_counter = 0
-		#data, _ = novaSet.next_batch('data')
-		#model.generate_and_save_images(data, FLAGS.working_directory)
+					training_loss = training_loss / \
+						(FLAGS.updates_per_epoch * FLAGS.batch_size)
+					
+					if (i % 10) == 0:
+						model.write_summaries(sum_epoch = i + (num_batches * epoch))
 
-	model.close_session()
+				if (epoch % 10) == 0 :
+					print("Epoch %d :Loss %f" % (epoch, training_loss))
+					model.save_model(epoch)
+
+				#novaSet.batch_counter = 0
+				#data, _ = novaSet.next_batch('data')
+				#model.generate_and_save_images(data, FLAGS.working_directory)
+
+

@@ -33,20 +33,22 @@ class nova_set(object):
 
 	def load(self, opt='all'):
 		if opt in ['ref', 'all']:
-			for file in self.mat_reflc_files:
-				if 'real' in file:
-					self.reflactance['real'] = np.transpose(np.load(file).astype(dtype=np.float32))
-				elif 'imag' in file:
-					self.reflactance['imag'] = np.transpose(np.load(file).astype(dtype=np.float32))
+			print('loading ref data...')
+			for file_ in self.mat_reflc_files:
+				if 'real' in file_:
+					self.reflactance['real'] = np.transpose(np.load(file_).astype(dtype=np.float32))
+				elif 'imag' in file_:
+					self.reflactance['imag'] = np.transpose(np.load(file_).astype(dtype=np.float32))
 			self.is_loaded = True
 			self.num_examples = self.reflactance['real'].shape[0]
 
 		if opt in ['tra', 'all']:
-			for file in self.mat_trans_files:
-				if 'real' in file:
-					self.transmitance['real'] = np.transpose(np.load(file).astype(dtype=np.float32))
-				elif 'imag' in file:
-					self.transmitance['imag'] = np.transpose(np.load(file).astype(dtype=np.float32))
+			print('loading tra data...')
+			for file_ in self.mat_trans_files:
+				if 'real' in file_:
+					self.transmitance['real'] = np.transpose(np.load(file_).astype(dtype=np.float32))
+				elif 'imag' in file_:
+					self.transmitance['imag'] = np.transpose(np.load(file_).astype(dtype=np.float32))
 			
 			self.is_loaded = True
 			self.num_examples = self.transmitance['real'].shape[0]
@@ -57,7 +59,7 @@ class nova_set(object):
 			self.num_examples = self.data.shape[0]
 	
 		
-	def next_batch(self, which):
+	def next_batch(self, which_config, which_type):
 		ref_real, tra_real, all_real = None, None, None
 		ref_imag, tra_imag = None, None
 
@@ -72,32 +74,14 @@ class nova_set(object):
 			end = self.batch_size
 		 
 
-		if which == 'ref':
-			try:
-				ref_real, ref_imag = self.reflactance['real'][begin:end, :], self.reflactance['imag'][begin:end, :]
-			except:
-				ref_real, ref_imag = self.reflactance['real'][begin:, :], self.reflactance['imag'][begin:, :]
-
-			return ref_real, ref_imag
+		if which_config == 'ref':
+			return self.reflactance[which_type][begin:end, :]
 		
-		elif which == 'tra':
-			try:
-				tra_real, tra_imag = self.transmitance['real'][begin:end, :], self.transmitance['imag'][begin:end, :]
-			except:
-				tra_real, tra_imag = self.transmitance['real'][begin:, :], self.transmitance['imag'][begin:, :]
-		
-			return tra_real, tra_imag
+		elif which_config == 'tra':
+			return self.transmitance[which_type][begin:end, :]
 
-		elif which == 'data':
-			try:
-				all_real = self.data[begin:end, :]
-			except:
-				all_real = self.data[begin:, :]
-			
-			return all_real, None
-
-		else:
-			return None, None
+		elif which_config == 'data':
+			return self.data[begin:end, :]
 
 
 	def permutate(self):
@@ -111,11 +95,12 @@ class nova_set(object):
 			self.reflactance = dict(zip(['real', 'imag'], values))
 		
 		if all(val is not None for val in self.transmitance.values()):
-			values = [value[self.perm:, ] for value in self.transmitance.values()]
+			values = [value[self.perm, :] for value in self.transmitance.values()]
 			self.transmitance = dict(zip(['real', 'imag'], values))
 
 		if self.data is not None:
 			self.data = self.data[self.perm]
+
 
 	def num_batches(self):
 		return int(math.floor(self.num_examples / self.batch_size))
