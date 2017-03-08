@@ -4,7 +4,7 @@ from __future__ import absolute_import, division, print_function
 
 import math
 import os
-
+from os.path import join
 import numpy as np
 import scipy.misc
 import tensorflow as tf
@@ -24,7 +24,8 @@ flags.DEFINE_integer("batch_size", 100, "batch size")
 flags.DEFINE_integer("updates_per_epoch", 100, "number of updates per epoch")
 flags.DEFINE_integer("max_epoch", 100, "max epoch")
 flags.DEFINE_float("learning_rate", 1e-2, "learning rate")
-flags.DEFINE_string("working_directory", "", "")   
+flags.DEFINE_string("working_directory", "", "")
+flags.DEFINE_string("data_directory", "", "") 
 flags.DEFINE_integer("hidden_size", 128, "size of the hidden VAE unit")
 flags.DEFINE_string("model", "gan", "Model type")
 flags.DEFINE_string("load_opt", "all", "Transmitance or Reflactance")
@@ -32,15 +33,11 @@ flags.DEFINE_string("load_opt", "all", "Transmitance or Reflactance")
 FLAGS = flags.FLAGS
 
 if __name__ == "__main__":
-	data_directory = FLAGS.working_directory
-	if not os.path.exists(data_directory):
-		os.makedirs(data_directory)
+	if not os.path.exists(FLAGS.working_directory):
+		os.makedirs(FLAGS.working_directory)
 
-	#TODO : replace mnist data set and replace with NOVA dataset
-	#Done
-	#TODO : check integrity of the data set with model
 	print('Creating NOVA set...')
-	novaSet = nova_set(batch_size = FLAGS.batch_size, dir_path = data_directory)
+	novaSet = nova_set(batch_size = FLAGS.batch_size, dir_path = FLAGS.data_directory)
 	opt = FLAGS.load_opt
 	print('Loading {} data...'.format(opt))
     	novaSet.load(opt)
@@ -60,8 +57,8 @@ if __name__ == "__main__":
 			print('Creating GAN model for {} {}...'.format(config, config_type))
 			model = GAN(	FLAGS.learning_rate, \
 					FLAGS.batch_size ,\
-					log_dir	  ='./logs/' + os.path.join(config,config_type),\
-					 model_dir='./model/'+ os.path.join(config,config_type))
+					log_dir	  = join(FLAGS.working_directory, 'logs/') + join(config,config_type),\
+					model_dir = join(FLAGS.working_directory, 'model/')+ join(config,config_type))
 
     			num_batches = novaSet.num_batches()
 
@@ -72,11 +69,10 @@ if __name__ == "__main__":
 				novaSet.permutate()
 				for i in pbar(range(num_batches)):
 					#fetch the batch of data to the model
-					ref_data  = novaSet.next_batch(config, config_type)
-			    		noise = np.random.normal(0.0, 0.02, size=[ref_data.shape[0], 8]).astype(np.float32)
+					data  = novaSet.next_batch(which_config = [config, 'data'], which_type = config_type)
 
-					#feed the btach of data to the model
-					loss_value = model.update_params(ref_data, noise)
+					#feed the batch of data to the model
+					loss_value = model.update_params(data[0], data[1])
 					training_loss += loss_value
 
 					training_loss = training_loss / \
@@ -84,13 +80,15 @@ if __name__ == "__main__":
 					
 					if (i % 10) == 0:
 						model.write_summaries(sum_epoch = i + (num_batches * epoch))
+					del data
 
 				if (epoch % 10) == 0 :
 					print("Epoch %d :Loss %f" % (epoch, training_loss))
 					model.save_model(epoch)
 
-				#novaSet.batch_counter = 0
-				#data, _ = novaSet.next_batch('data')
-				#model.generate_and_save_images(data, FLAGS.working_directory)
+			print('Done optimizing {} {} part!'.format(config, config_type))
+			print('Closeing session...')
+			model.close()
+			del model
 
 
