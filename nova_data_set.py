@@ -60,8 +60,7 @@ class nova_set(object):
 	
 		
 	def next_batch(self, which_config, which_type):
-		ref_real, tra_real, all_real = None, None, None
-		ref_imag, tra_imag = None, None
+		returned_data = []
 
 		#set the batch boundaries
 		begin = self.batch_counter
@@ -74,15 +73,16 @@ class nova_set(object):
 			end = self.batch_size
 		 
 
-		if which_config == 'ref':
-			return self.reflactance[which_type][begin:end, :]
+		if 'ref' in which_config:
+			returned_data.append(self.reflactance[which_type][begin:end, :])
 		
-		elif which_config == 'tra':
-			return self.transmitance[which_type][begin:end, :]
+		if 'tra' in which_config:
+			returned_data.append(self.transmitance[which_type][begin:end, :])
 
-		elif which_config == 'data':
-			return self.data[begin:end, :]
+		if 'data' in which_config:
+			returned_data.append(self.data[begin:end, :])
 
+		return returned_data
 
 	def permutate(self):
 		'''
@@ -93,10 +93,12 @@ class nova_set(object):
 		if all(val is not None for val in self.reflactance.values()):
 			values = [value[self.perm, :] for value in self.reflactance.values()]
 			self.reflactance = dict(zip(['real', 'imag'], values))
+			del values
 		
 		if all(val is not None for val in self.transmitance.values()):
 			values = [value[self.perm, :] for value in self.transmitance.values()]
 			self.transmitance = dict(zip(['real', 'imag'], values))
+			del values
 
 		if self.data is not None:
 			self.data = self.data[self.perm]
