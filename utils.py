@@ -11,12 +11,11 @@ def encoder(input_tensor, output_size):
     Returns:
         A tensor that expresses the encoder network
     '''
-    #TODO: replace net shape from [-1, 30, 30, 1]
-    #DONE
+    
     net = tf.reshape(input_tensor, [-1, 30, 30, 1])
-    net = layers.conv2d(net, 32, 5, stride=2)
-    net = layers.conv2d(net, 64, 5, stride=2)
-    net = layers.conv2d(net, 128, 5, stride=2, padding='VALID')
+    net = layers.conv2d(net, 8, 5, stride=2)
+    net = layers.conv2d(net, 16, 5, stride=2)
+    net = layers.conv2d(net, 32, 5, stride=2, padding='VALID')
     net = layers.dropout(net, keep_prob=0.9)
     net = layers.flatten(net)
     return layers.fully_connected(net, output_size, activation_fn=None)
@@ -49,10 +48,9 @@ def decoder(input_tensor):
 
     net = tf.expand_dims(input_tensor, 1)
     net = tf.expand_dims(net, 1 )
-    net = tf.reshape(net, shape=[-1, 2, 2, 2])
-    net = layers.conv2d_transpose(net, 128, 4, stride=2)
-    net = layers.conv2d_transpose(net, 64,  8, stride=2)
-    net = layers.conv2d_transpose(net, 32,  8, stride=1, padding='VALID')
-    net = layers.conv2d_transpose(net, 1,  16, stride=1, padding='VALID',activation_fn=None)
+    net = layers.conv2d_transpose(net, 32, kernel_size=5, stride=2, padding='VALID')
+    net = layers.conv2d_transpose(net, 16,  kernel_size=5, stride=3, padding='SAME')
+    net = layers.conv2d_transpose(net, 8,  kernel_size=3, stride=2, padding='SAME')
+    net = layers.conv2d_transpose(net, 1,   kernel_size=3, stride=1, padding='SAME',activation_fn=None)
     net = layers.flatten(net)
     return net

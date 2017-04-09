@@ -1,5 +1,6 @@
 import os
 from scipy.misc import imsave
+import numpy as np
 
 class Generator(object):
 
@@ -14,19 +15,18 @@ class Generator(object):
         '''
         raise NotImplementedError()
 
-    def generate_and_save_images(self, inputs, directory):
+    def generate_and_save_images(self, inputs, indices, directory, epoch):
         '''Generates the images using the model and saves them in the directory
 
         Args:
             num_samples: number of samples to generate
             directory: a directory to save the images
         '''
-        imgs = self.sess.run(self.sampled_tensor, feed_dict={self.nova_input : inputs})
+	
+	imgs = self.sess.run(self.sampled_tensor, {self.nova_input : inputs})
         for k in range(imgs.shape[0]):
-            imgs_folder = os.path.join(directory, 'imgs')
+            imgs_folder = os.path.join(directory, 'epoch-' + str(epoch))
             if not os.path.exists(imgs_folder):
                 os.makedirs(imgs_folder)
-	    
-	    #TODO: change reshape(28,28) to reshape(30,30
-	    #DONE
-            imsave(os.path.join(imgs_folder, '%d.png') % k, imgs[k].reshape(30, 30) )
+
+            imsave(os.path.join(imgs_folder, '%d.png') % indices[k], imgs[k].reshape(30, 30) )
