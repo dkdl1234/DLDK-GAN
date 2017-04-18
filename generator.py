@@ -17,10 +17,6 @@ class Generator(object):
 
     def generate_and_save_images(self, inputs, indices, directory, epoch):
         '''Generates the images using the model and saves them in the directory
-
-        Args:
-            num_samples: number of samples to generate
-            directory: a directory to save the images
         '''
 	
 	imgs = self.sess.run(self.sampled_tensor, {self.nova_input : inputs})

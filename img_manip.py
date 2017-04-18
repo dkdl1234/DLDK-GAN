@@ -94,6 +94,9 @@ def merge_image_summaries(real_dir, fake_dir, targ_dir):
 
 
 def convert_png_to_mp4(fake_files_names,real_file_name, name, saving_directory):
+	'''
+		Create a single mp4 summary from png image sequence.
+	'''
 	import imageio
 	
 	files = [file_ + ".png" for file_ in fake_files_names]
@@ -115,6 +118,10 @@ def convert_png_to_mp4(fake_files_names,real_file_name, name, saving_directory):
 
 
 def merge_mp4s(real_dir, fake_dir, targ_dir):
+	'''
+		Create an mp4 summary video presenting fake images near to real images
+		This requires a directory that holds the real images, and directories that hold the fake images
+	'''
 	#get all the images indices from the real image directory
 	img_names = [splitext(file_)[0] for file_ in listdir(real_dir) if ".png" in file_]
 	fake_dirs = listdir(fake_dir)

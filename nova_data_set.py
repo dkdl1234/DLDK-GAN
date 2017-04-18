@@ -35,6 +35,9 @@ class nova_set(object):
 	def load(self, opt='all'):
 		'''
 			Load data to cache
+			
+			Args
+				opt - the option (reflactance/transmitance/input data) to be loaded
 		'''
 		if opt in ['ref', 'all']:
 			print('loading ref data...')
@@ -68,6 +71,10 @@ class nova_set(object):
 	def next_batch(self, which_config, which_type, batch_size= None):
 		'''
 			Get permutated data for training procecss
+			
+			Args
+				which_config: chooses reflactance/transmitance returned data 
+				which_type	: chooses real/imaginary returned data
 		'''
 		returned_data = []
 
@@ -106,6 +113,12 @@ class nova_set(object):
 	def get_data(self, which_config, which_type, indices, is_train=True):
 		'''
 			Get non-permutated data according to indices
+			
+			Args
+				which_config: chooses reflactance/transmitance returned data 
+				which_type	: chooses real/imaginary returned data
+				indices: chooses the data points to be extracted
+				is_train: if true, extracted points will be from the training set, else from the testing set
 		'''
 		returned_data = []
 		if 'ref' in which_config:
@@ -131,6 +144,12 @@ class nova_set(object):
 	def save_images(self, which_config, which_type, which_indices, save_dir):
 		'''
 			Save images to the disk 
+			
+			Args
+				which_config: chooses reflactance/transmitance returned data 
+				which_type	: chooses real/imaginary returned data
+				which_indices: chooses the data points to be saved
+				save_dir 	: the directory where the images will be saved
 		'''
 		#create the saving directory
 		if not os.path.exists(save_dir):
@@ -177,14 +196,16 @@ class nova_set(object):
 
 	def num_batches(self):
 		'''
-			Return the number of batches 
+			Returns the number of batches 
 		'''
 		return int(math.floor(self.num_train_examples / self.batch_size))
 
 
 	def split_data(self, ratio=0.8):
 		'''
-			Split the data to training and testing data 
+			Split the data to training and testing data
+			Args
+				ratio - the ratio according the data will be split to training - testing sets.
 		'''
 		assert ratio <= 1
 		self.num_train_examples = num_trains = int(math.ceil(self.num_examples * ratio))
@@ -212,6 +233,13 @@ class nova_set(object):
 
 
 	def test_info(self, which_config, which_type):
+		'''
+			Return the test data set
+			
+			Args
+				which_config: chooses reflactance/transmitance returned data 
+				which_type	: chooses real/imaginary returned data
+		'''
 		returned_data = []
 		if 'ref' in which_config:
 			returned_data.append(self.ref_test[which_type])

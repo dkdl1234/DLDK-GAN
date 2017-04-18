@@ -158,7 +158,7 @@ class GAN(Generator):
 	#run the generator optimizer the second time to keep in pace with the discriminator and prevent early discriminator convergence
 	g_loss_value += self.sess.run(self.train_generator, feed_dict={self.nova_input : gen_inputs})
 	g_loss_value += self.sess.run(self.train_generator, feed_dict={self.nova_input : gen_inputs})
-        return g_loss_value / 3
+	return g_loss_value / 3
 
 
 
@@ -219,8 +219,8 @@ class GAN(Generator):
 	assert r_inputs is not None
 	assert f_inputs is not None
 	_, _,img_summary = self.sess.run([self.sampled_tensor, self.r_images_tensor, self.merged_image_op], \
-							{self.nova_input : f_inputs,\
-							self.input_tensor : r_inputs})
+					{self.nova_input : f_inputs,\
+					self.input_tensor : r_inputs})
 
 	self.writer.add_summary(img_summary, sum_epoch)
 	

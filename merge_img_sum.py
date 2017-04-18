@@ -2,6 +2,11 @@ from img_manip import merge_image_summaries, merge_mp4s
 import argparse
 from os.path import join
 
+'''
+	Command line accepts 
+	1.	img_dir - the top directory in which the two real and fake images reside
+	2. 	opt 	- which summary type (pdf/mp4) to create
+'''
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
 	parser.add_argument('img_dir')
